@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import http
-
+import requests
 import json
 
 import logging
@@ -8,18 +8,12 @@ _logging = _logger = logging.getLogger(__name__)
 
 class Oruschat(http.Controller):
 
-     @http.route('/oruschat/oruschat/', auth='public', csrf=False)
-     def index(self, **kw):
-        
-        _logging.info(f"DEF11  dir: {dir(self)}\n self: {self}\n kw:{kw}\n")
+    @http.route('/oruschat/contact', auth='public', csrf=False, methods=['GET'])
+    def index(self, **kw):
         
         data = http.request.httprequest.data
         header = http.request.httprequest.headers
         args = http.request.httprequest.args
-        
-        msg = f"DEF18 data: {data}\n header: {header}\n args: {args}\n"
-
-        _logging.info( msg )
         
         key = header.get('key')
         phone = header.get('phone')
@@ -27,38 +21,58 @@ class Oruschat(http.Controller):
         oruschat_id = header.get('contact-id')
         company_int = header.get('company-id') or 1
         
-        _logging.info(f"DEF28 phone: {phone}")
-        partner_data = http.request.env['res.partner'].sudo().search([
-            ('phone', '=', phone),
-            #('id', '=', 41)
-        ],limit=1)
-        # Utilizar search_read
-        _logging.info(f"DEF34 phone: {partner_data}")
-
-        msg = f"DEF36: partner_data: {partner_data.ids} other: {partner_data}"
-        
-        if len(partner_data) == 0:
-            return http.Response("", status=404)
-        elif len(partner_data) > 1:
-            data = { "Error": "Many Users Found" }
+        if oruschat_id in [False, None]:
+            data = {'error': 'No Oruschat id sent'}
             return http.Response( json.dumps(data), status=404)
-        else:
+        
+        data = self.get_partner( [ ('oruschat_id', '=', oruschat_id) ] )
+
+        if data.get('error') != {}:
+            data = self.get_partner([ ('phone', '=', phone) ])
+        
+        if data.get('error') != {}:
+            data = self.get_partner([ ('email', '=', email) ])
+        
+        try:
+            partner_id = data.get('partner_id')
+            if partner_id.oruschat_id != oruschat_id:
+                partner_id.write({
+                    'oruschat_id': oruschat_id,
+                })
+        except:
             pass
 
+        data.pop('partner_id')
+        status = data.get('status')
+        data.pop('status')
+
+        return http.Response( json.dumps(data), status )
+    
+
+
+    def get_partner(self, filter1):
+        partner_id = http.request.env['res.partner'].sudo().search(
+            filter1,
+            limit=1
+        )
         
-        data = { data: {
-                    'name': partner_data.name ,
-                    'contact_id': 'PENDIENTE',
-                    'agent_email': partner_data.user_id.partner_id.name,
-                }
-        }
-        
-        data = json.dumps(data)
-        _logging.info(f"DEF55 data: {data}")
-        
-        return http.Response( , status=200)
-        
-        
+        status = 200
+        error = {}
+        data = {}
+        if len(partner_id) == 0:
+            status = 404
+            error = { "error": "Not Found" }
+        elif len(partner_id) > 1:
+            status = 404
+            error = { "error": "Many Users Found" }
+        else:
+            data = {'name': partner_id.name ,
+                    'contact_id': partner_id.oruschat_id,
+                    'agent_email': partner_id.user_id.partner_id.email,
+                   }
+
+        return {'data': data, 'status': status, 'error': error, 'partner_id': partner_id}
+    
 
 '''
      @http.route('/oruschat/oruschat/objects/', auth='public')
