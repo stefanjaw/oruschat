@@ -8,6 +8,37 @@ _logging = _logger = logging.getLogger(__name__)
 
 class Oruschat(http.Controller):
 
+    @http.route('/oruschat/contact', auth='public', csrf=False, methods=['POST'], type='json')
+    def create(self, **kw):
+        data = (json.loads((http.request.httprequest.data).decode('utf-8'))).get('data')
+        header = http.request.httprequest.headers
+        args = http.request.httprequest.args
+        
+        status_response = True
+        oruschat_id = data.get('contact_id')
+        
+        #Se hace la validacion si existe el oruschat o si es invalido para devolver la respuesta en falso
+        if(len(self.get_partner([ ('oruschat_id', '=', phone) ])) >= 1) or (oruschat_id in [False, None]):
+            status_response = False
+            error = {'error' : 'Invalid contact_id(oruschat_id)',
+                    'status' : status_response }
+            return http.response(error,404)
+        else:
+            pass
+        
+        
+        
+        
+        _logging.info(f'\n\n\n\n {data} \n\n\n\n')
+        
+        
+        return http.Response( data, 200)
+        
+        
+        
+        
+        
+    
     @http.route('/oruschat/contact', auth='public', csrf=False, methods=['GET'])
     def index(self, **kw):
         
@@ -51,6 +82,7 @@ class Oruschat(http.Controller):
 
 
     def get_partner(self, filter1):
+        #revisar el limite
         partner_id = http.request.env['res.partner'].sudo().search(
             filter1,
             limit=1
