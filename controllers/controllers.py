@@ -9,30 +9,62 @@ _logging = _logger = logging.getLogger(__name__)
 class Oruschat(http.Controller):
 
     @http.route('/oruschat/contact', auth='public', csrf=False, methods=['POST'], type='json')
-    def create(self, **kw):
+    def oruschat_post(self, **kw):
         data = (json.loads((http.request.httprequest.data).decode('utf-8'))).get('data')
         header = http.request.httprequest.headers
         args = http.request.httprequest.args
         
         status_response = True
+        name = data.get('name')
+        agent_email = data.get('agent_email')
+        email = data.get('email')
+        mobile = data.get('mobile')
+        product_name = data.get('product_name')
+        source = data.get('source')
         oruschat_id = data.get('contact_id')
         
-        #Se hace la validacion si existe el oruschat o si es invalido para devolver la respuesta en falso
-        if(len(self.get_partner([ ('oruschat_id', '=', phone) ])) >= 1) or (oruschat_id in [False, None]):
+        
+        if (oruschat_id in [False, None, ""]):
             status_response = False
-            error = {'error' : 'Invalid contact_id(oruschat_id)',
-                    'status' : status_response }
-            return http.response(error,404)
+            response = {'error' : 'Invalid contact_id'}
+            return http.Response({'response':response}, 404)
         else:
             pass
         
+        partner_ids = http.request.env['res.partner'].sudo().search([
+            ('oruschat_id', '=', oruschat_id)
+        ])
+        
+        _logging.info(f'F38====================partner_id:{partner_ids}')
         
         
         
-        _logging.info(f'\n\n\n\n {data} \n\n\n\n')
+        
+        user_id = http.request.env['res.users'].sudo().search([
+            ('partner_id.email', '=', agent_email)
+        ])
+        
+        _logging.info(f'User_id================{user_id}')
+        
+        source_id = http.request.env['utm.source'].sudo().search([
+            ('name', 'ilike', source)
+        ])
+        
+        _logging.info(f'Source_id================{source_id}')
+        
+        for partner_id in partner_ids:
+            lead_id = http.request.env['crm.lead'].sudo().create({
+                    'name' : name,
+                    'email_from' : email,
+                    'user_id' : user_id.id,
+                    'phone' : mobile,
+                    'source_id' : source_id.id,
+                    'partner_id' : partner_id.id,
+                    'type' : 'lead'
+            })
         
         
-        return http.Response( data, 200)
+        return http.Response(data, 200)
         
         
         
@@ -40,7 +72,7 @@ class Oruschat(http.Controller):
         
     
     @http.route('/oruschat/contact', auth='public', csrf=False, methods=['GET'])
-    def index(self, **kw):
+    def oruschat_get(self, **kw):
         
         data = http.request.httprequest.data
         header = http.request.httprequest.headers
