@@ -11,6 +11,7 @@ class Oruschat(http.Controller):
     @http.route('/oruschat/contact', auth='public', csrf=False, methods=['POST'], type='json')
     def oruschat_post(self, **kw):
         data = (json.loads((http.request.httprequest.data).decode('utf-8'))).get('data')
+
         header = http.request.httprequest.headers
         args = http.request.httprequest.args
         
@@ -62,8 +63,7 @@ class Oruschat(http.Controller):
                     'partner_id' : partner_id.id,
                     'type' : 'lead'
             })
-        
-        
+
         return http.Response(data, 200)
         
         
@@ -80,6 +80,9 @@ class Oruschat(http.Controller):
         
         key = header.get('key')
         phone = header.get('phone')
+        if phone is not [False, None] and str(phone)[0] == "+":
+            phone = phone[1:]
+
         email = header.get('email')
         oruschat_id = header.get('contact-id')
         company_int = header.get('company-id') or 1
@@ -104,11 +107,11 @@ class Oruschat(http.Controller):
                 })
         except:
             pass
-
+        
         data.pop('partner_id')
         status = data.get('status')
         data.pop('status')
-
+        
         return http.Response( json.dumps(data), status )
     
 
