@@ -23,7 +23,7 @@ class Oruschat(http.Controller):
         product_name = data.get('product_name')
         source = data.get('source')
         oruschat_id = data.get('contact_id')
-        
+         
         
         if (oruschat_id in [False, None, ""]):
             status_response = False
@@ -36,7 +36,7 @@ class Oruschat(http.Controller):
             ('oruschat_id', '=', oruschat_id)
         ])
         
-        _logging.info(f'F38====================partner_id:{partner_ids}')
+        
         
         
         
@@ -45,13 +45,13 @@ class Oruschat(http.Controller):
             ('partner_id.email', '=', agent_email)
         ])
         
-        _logging.info(f'User_id================{user_id}')
+        
         
         source_id = http.request.env['utm.source'].sudo().search([
             ('name', 'ilike', source)
         ])
         
-        _logging.info(f'Source_id================{source_id}')
+        
         
         for partner_id in partner_ids:
             lead_id = http.request.env['crm.lead'].sudo().create({
@@ -70,7 +70,7 @@ class Oruschat(http.Controller):
         
         
         
-    
+     
     @http.route('/oruschat/contact', auth='public', csrf=False, methods=['GET'])
     def oruschat_get(self, **kw):
         
@@ -89,7 +89,13 @@ class Oruschat(http.Controller):
         
         if oruschat_id in [False, None]:
             data = {'error': 'No Oruschat id sent'}
-            return http.Response( json.dumps(data), status=404)
+            
+            headers = {
+                'content-type' : 'application/json'
+            }
+
+            return http.Response( json.dumps(data), status=404, headers=headers,)   
+
         
         data = self.get_partner( [ ('oruschat_id', '=', oruschat_id) ] )
 
@@ -112,8 +118,13 @@ class Oruschat(http.Controller):
         status = data.get('status')
         data.pop('status')
         
-        return http.Response( json.dumps(data), status )
-    
+        headers = {
+            'content-type' : 'application/json'
+        }
+        
+        return http.Response( json.dumps(data),status,headers, )
+        
+        
 
 
     def get_partner(self, filter1):
@@ -140,18 +151,3 @@ class Oruschat(http.Controller):
 
         return {'data': data, 'status': status, 'error': error, 'partner_id': partner_id}
     
-
-'''
-     @http.route('/oruschat/oruschat/objects/', auth='public')
-     def list(self, **kw):
-         return http.request.render('oruschat.listing', {
-             'root': '/oruschat/oruschat',
-             'objects': http.request.env['oruschat.oruschat'].search([]),
-         })
-
-     @http.route('/oruschat/oruschat/objects/<model("oruschat.oruschat"):obj>/', auth='public')
-     def object(self, obj, **kw):
-         return http.request.render('oruschat.object', {
-             'object': obj
-         })
-'''
