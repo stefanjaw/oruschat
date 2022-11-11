@@ -36,22 +36,13 @@ class Oruschat(http.Controller):
             ('oruschat_id', '=', oruschat_id)
         ])
         
-        
-        
-        
-        
-        
         user_id = http.request.env['res.users'].sudo().search([
             ('partner_id.email', '=', agent_email)
         ])
         
-        
-        
         source_id = http.request.env['utm.source'].sudo().search([
             ('name', 'ilike', source)
         ])
-        
-        
         
         for partner_id in partner_ids:
             lead_id = http.request.env['crm.lead'].sudo().create({
@@ -66,11 +57,6 @@ class Oruschat(http.Controller):
 
         return http.Response(data, 200)
         
-        
-        
-        
-        
-     
     @http.route('/oruschat/contact', auth='public', csrf=False, methods=['GET'])
     def oruschat_get(self, **kw):
         
@@ -100,10 +86,10 @@ class Oruschat(http.Controller):
         data = self.get_partner( [ ('oruschat_id', '=', oruschat_id) ] )
 
         if data.get('error') != {}:
-            data = self.get_partner([ ('phone', '=', phone) ])
+            data = self.get_partner([ ('phone', '=', phone), ('phone', 'not in', [False, None])  ])
         
         if data.get('error') != {}:
-            data = self.get_partner([ ('email', '=', email) ])
+            data = self.get_partner([ ('email', '=', email), ('email', 'not in', [False, None])  ])
         
         try:
             partner_id = data.get('partner_id')
@@ -123,17 +109,14 @@ class Oruschat(http.Controller):
         }
         
         return http.Response( json.dumps(data),status,headers, )
-        
-        
-
-
+    
     def get_partner(self, filter1):
         #revisar el limite
         partner_id = http.request.env['res.partner'].sudo().search(
             filter1,
             limit=1
         )
-        
+
         status = 200
         error = {}
         data = {}
@@ -148,6 +131,6 @@ class Oruschat(http.Controller):
                     'contact_id': partner_id.oruschat_id,
                     'agent_email': partner_id.user_id.partner_id.email,
                    }
-
+        
         return {'data': data, 'status': status, 'error': error, 'partner_id': partner_id}
     
