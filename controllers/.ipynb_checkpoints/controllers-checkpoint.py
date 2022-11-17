@@ -140,6 +140,7 @@ class Oruschat(http.Controller):
             phone = phone[1:]
         _logging.info(f"DEF150 phone: {phone}\n")
         email = header.get('email')
+        _logging.info(f"DEF143 email: {email}\n")
         oruschat_id = header.get('contact-id')
         company_int = header.get('company-id') or 1
         
@@ -153,16 +154,19 @@ class Oruschat(http.Controller):
             return http.Response( json.dumps(data), status=404, headers=headers,)   
 
         
-        data = self.get_partner( [ ('oruschat_id', '=', oruschat_id) ] )
-        _logging.info(f"DEF166 phone: {data}\n")
-        if data.get('error') != {}:
-            data = self.get_partner([ ('phone', '=', phone), ('phone', 'not in', [False, None])  ])
-        _logging.info(f"DEF169 phone: {data}\n")
-        if data.get('error') != {}:
-            data = self.get_partner([ ('email', '=', email), ('email', 'not in', [False, None])  ])
-        _logging.info(f"DEF172 phone: {data}\n")
+        partner_id = self.get_partner_id( [ ('oruschat_id', '=', oruschat_id) ] )
+        _logging.info(f"DEF157 partner_id oruschat_id: {partner_id}\n")
+        
+        if len(partner_id) == 0 and phone not in [False, None]:
+            partner_id = self.get_partner_id([ ('phone', '=', phone), ])
+        _logging.info(f"DEF162 partner_id phone: {partner_id}\n")
+        
+        if len(partner_id) == 0 and email not in [False, None]:
+            partner_id = self.get_partner_id([ ('email', '=', email), ('email', 'not in', [False, None])  ])
+        _logging.info(f"DEF166 partner_id email: {partner_id}\n")
+        
+        
         try:
-            partner_id = data.get('partner_id')
             if partner_id.oruschat_id != oruschat_id:
                 partner_id.write({
                     'oruschat_id': oruschat_id,
@@ -170,37 +174,59 @@ class Oruschat(http.Controller):
         except:
             pass
         
-        data.pop('partner_id')
-        status = data.get('status')
-        data.pop('status')
-        
+        error = {}
+        if len(partner_id) == 1:
+            status = 200
+            data =  {   'name': partner_id.name ,
+                        'contact_id': partner_id.oruschat_id,
+                    }
+            if len( partner_id.user_id ) > 0:
+                data[ 'agent_email' ] = partner_id.user_id.partner_id.email
+            elif len( partner_id.user_id ) == 0:
+                data[ 'agent_email' ] = False
+                
+        elif len(partner_id) == 0:
+            status = 404
+            data = {  }
+            error = "Not Found"
+        elif len(partner_id) > 1:
+            status = 404
+            data = {  }
+            error = "Many Users Found"
+            
         headers = {
             'content-type' : 'application/json'
         }
         
-        return http.Response( json.dumps(data),status,headers, )
+        output = {'data': data, 'error': error}
+        _logging.info(f"DEF202 output: {output}\n")
+        return http.Response( json.dumps(output), status, headers, )
     
-    def get_partner(self, filter1):
-        #revisar el limite
+    def get_partner_id(self, filter1):
         partner_id = http.request.env['res.partner'].sudo().search(
             filter1,
             limit=1
         )
-
-        status = 200
-        error = {}
-        data = {}
-        if len(partner_id) == 0:
-            status = 404
-            error = { "error": "Not Found" }
-        elif len(partner_id) > 1:
-            status = 404
-            error = { "error": "Many Users Found" }
-        else:
-            data = {'name': partner_id.name ,
-                    'contact_id': partner_id.oruschat_id,
-                    'agent_email': partner_id.user_id.partner_id.email,
-                   }
         
-        return {'data': data, 'status': status, 'error': error, 'partner_id': partner_id}
+        return partner_id
+        
+#         status = 200
+#         error = {}
+#         data = {}
+#         if len(partner_id) == 0:
+# #             status = 404
+# #             error = { "error": "Not Found" }
+#         elif len(partner_id) > 1:
+#             status = 404
+#             error = { "error": "Many Users Found" }
+#         else:
+#             pass
+#             data = {'name': partner_id.name ,
+#                     'contact_id': partner_id.oruschat_id,
+#                     'agent_email': partner_id.user_id.partner_id.email,
+#                    }
+        
+        
+#         return {'data': data, 'status': status, 'error': error, 'partner_id': partner_id}
+
     
