@@ -37,6 +37,8 @@ class Oruschat(http.Controller):
         aux_null = [False, None, ""]
         lead_data = {}
         
+        _logging.info(f"DEF40 ===========")
+        
         if oruschat_id in aux_null:
             data = {
                 'status' : False,
@@ -52,7 +54,7 @@ class Oruschat(http.Controller):
             ('oruschat_id', '=', oruschat_id)
             ]))
         
-        
+        _logging.info(f"DEF57 ===========")
         
         if  category_name not in aux_null:
             category_name_id = (http.request.env['crm.tag'].sudo().search([
@@ -67,7 +69,7 @@ class Oruschat(http.Controller):
             ]))
             if product_id not in aux_null:
                 lead_data['product_id'] = product_id.id 
-        
+        _logging.info(f"DEF72 ===========")
         if  agent_email not in aux_null:
             user_id = (http.request.env['res.users'].sudo().search([
             ('name', '=', agent_email )
@@ -79,20 +81,20 @@ class Oruschat(http.Controller):
             source_id = (http.request.env['utm.source'].sudo().search([
             ('name', 'ilike', source )
             ]))
-            if user_id not in aux_null:
+            if source_id not in aux_null:
                 lead_data['source_id'] = source_id.id 
         
         if  medium not in aux_null:
             medium_id = (http.request.env['utm.medium'].sudo().search([
             ('name', 'ilike', medium )
             ]))
-            if user_id not in aux_null:
+            if medium_id not in aux_null:
                 lead_data['medium_id'] = medium_id.id
         
         
         
         if  lead_name not in aux_null:
-            lead_data['lead_name'] = lead_name
+            lead_data['name'] = lead_name
         
         if  contact_name not in aux_null:
             lead_data['contact_name'] = contact_name
@@ -106,15 +108,18 @@ class Oruschat(http.Controller):
         if  active not in aux_null:
             lead_data['active'] = active
         
+        _logging.info(f"DEF111 =========== partner_ids:{partner_ids}")
+        _logging.info(f"DEF112 =========== lead_data:{lead_data}")
         
-        for partner_id in partner_ids:
-            lead_id = http.request.env['crm.lead'].sudo().create(lead_data)
+        #for partner_id in partner_ids:
+        lead_id = http.request.env['crm.lead'].sudo().create(lead_data)
+        _logging.info(f"DEF116 lead_id: {lead_id}")
         
         data = {
             'status' : True
         }
         
-        http.Response.status = "400 algo"
+        #http.Response.status = "400 algo"
         return json.dumps(data) #http.Response( response,status,headers, )
 
 
