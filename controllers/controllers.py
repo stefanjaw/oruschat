@@ -167,7 +167,7 @@ class Oruschat(http.Controller):
         _logging.info(f"DEF162 partner_id phone: {partner_id}\n")
         
         if len(partner_id) == 0 and email not in [False, None]:
-            partner_id = self.get_partner_id([ ('email', '=', email), ('email', 'not in', [False, None])  ])
+            partner_id = self.get_partner_id([ ('email', '=', email) ])
         _logging.info(f"DEF166 partner_id email: {partner_id}\n")
         
         
