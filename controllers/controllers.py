@@ -93,7 +93,8 @@ class Oruschat(http.Controller):
         if active: 
             lead_data['active'] = active
         
-        lead_id = (http.request.env['crm.lead'].sudo().create(lead_data))
+        
+        lead_id = (http.request.env['crm.lead'].sudo().with_context(create_lead = True).create(lead_data))
        
         data= {
             'status' : True
