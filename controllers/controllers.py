@@ -6,13 +6,13 @@ import json
 import logging
 _logging = _logger = logging.getLogger(__name__)
 
-class Oruschat(http.Controller):
+class Oruschat(http.Controller): 
 
+    
+    
     @http.route('/oruschat/lead', auth='public', csrf=False, methods=['POST'], type='json')
     def oruschat_post(self, **kw):
-
-        
-        # data = (json.loads((http.request.httprequest.data).decode('utf-8'))).get('data')
+    
         data = (json.loads((http.request.httprequest.data).decode('utf-8'))).get('data')
         header = http.request.httprequest.headers
         
@@ -33,97 +33,94 @@ class Oruschat(http.Controller):
         medium = data.get('medium')
         source = data.get('source')
         active = data.get('active')
-        
         aux_null = [False, None, ""]
+        
         lead_data = {}
+        params = {}
         
-        _logging.info(f"DEF40 ===========")
+        if oruschat_id not in aux_null : params['oruschat_id'] = oruschat_id
+        if email not in aux_null : params['email'] = email  
+        if phone not in aux_null : params['phone'] = phone  
         
-        if oruschat_id in aux_null:
-            data = {
-                'status' : False,
-                'error': 'No Oruschat id sent'
-            }
-            headers = {
-                'content-type' : 'application/json'
-            }
-            _logging.info(f"DEF61 ===========")
-            return http.Response( json.dumps(data), status=404, headers=headers,)
-        else:
-            partner_ids = (http.request.env['res.partner'].sudo().search([
-            ('oruschat_id', '=', oruschat_id)
+        partner_id = self.get_partner_id(params)
+        if partner_id not in aux_null and len(partner_id) == 1:
+            partner_id.write(params)
+        if len(partner_id) < 1:
+            params['name'] = contact_name
+            partner_id = self.create_partner(params)
+             
+                
+        if agent_email not in aux_null:
+            user_id = (http.request.env['res.users'].sudo().search([
+            ('name', '=', agent_email )
             ]))
-        
-        _logging.info(f"DEF57 ===========")
+            if user_id not in aux_null and len(user_id) > 0:
+                lead_data['user_id'] = user_id.id 
+                
+         
         
         if  category_name not in aux_null:
             category_name_id = (http.request.env['crm.tag'].sudo().search([
             ('name', 'ilike', category_name )
             ]))
-            if category_name_id not in aux_null:
+            if category_name_id not in aux_null or len(category_name_id) == 0:
                 lead_data['tag_ids'] = category_name_id.id 
 
         if  product_name not in aux_null:
             product_id = (http.request.env['product.product'].sudo().search([
             ('name', 'ilike', product_name )
             ]))
-            if product_id not in aux_null:
+            if product_id not in aux_null and len(product_id) > 0:
                 lead_data['product_id'] = product_id.id 
-        _logging.info(f"DEF72 ===========")
-        if  agent_email not in aux_null:
-            user_id = (http.request.env['res.users'].sudo().search([
-            ('name', '=', agent_email )
-            ]))
-            if user_id not in aux_null:
-                lead_data['user_id'] = user_id.id 
         
         if  source not in aux_null:
             source_id = (http.request.env['utm.source'].sudo().search([
             ('name', 'ilike', source )
             ]))
-            if source_id not in aux_null:
+            if source_id not in aux_null and len(source_id) > 0:
                 lead_data['source_id'] = source_id.id 
         
         if  medium not in aux_null:
             medium_id = (http.request.env['utm.medium'].sudo().search([
             ('name', 'ilike', medium )
             ]))
-            if medium_id not in aux_null:
+            if medium_id not in aux_null and len(medium_id) > 0:
                 lead_data['medium_id'] = medium_id.id
         
         
         
-        if  lead_name not in aux_null:
+        if  lead_name not in aux_null: 
             lead_data['name'] = lead_name
-        
-        if  contact_name not in aux_null:
+            
+        if  contact_name not in aux_null: 
             lead_data['contact_name'] = contact_name
             
-        if  email not in aux_null:
+        if  email not in aux_null: 
             lead_data['email_from'] = email
-        
-        if  phone not in aux_null:
+            
+        if  phone not in aux_null: 
             lead_data['phone'] = phone
             
-        if  active not in aux_null:
+        if  active not in aux_null: 
             lead_data['active'] = active
-        
-        _logging.info(f"DEF111 =========== partner_ids:{partner_ids}")
-        _logging.info(f"DEF112 =========== lead_data:{lead_data}")
-        
-        #for partner_id in partner_ids:
-        lead_id = http.request.env['crm.lead'].sudo().create(lead_data)
-        _logging.info(f"DEF116 lead_id: {lead_id}")
-        
-        data = {
+     
+         
+        lead_id = (http.request.env['crm.lead'].sudo().create(lead_data))
+       
+         
+        campaigns_leads = http.request.env['crm.lead'].sudo().search([
+            ('campaign_id.id', '=', lead_id.campaign_id.id)
+        ])
+                     
+           
+        data= {
             'status' : True
         }
         
-        #http.Response.status = "400 algo"
-        return json.dumps(data) #http.Response( response,status,headers, )
+        return json.dumps(data)
 
 
-        
+ 
         
         
     #/////////////////////////////////////////////////////////////////////////////////////////////    
@@ -158,26 +155,21 @@ class Oruschat(http.Controller):
 
             return http.Response( json.dumps(data), status=404, headers=headers,)   
 
+        params = {}
+        if oruschat_id : params['oruschat_id'] = oruschat_id
+        if email : params['email'] = email  
+        if phone : params['phone'] = phone    
         
-        partner_id = self.get_partner_id( [ ('oruschat_id', '=', oruschat_id) ] )
+        
+        
+        partner_id = self.get_partner_id(params)
+        
+        if len(partner_id) == 1 and oruschat_id:
+            partner_id.write({'oruschat_id' : oruschat_id})
+            
         _logging.info(f"DEF157 partner_id oruschat_id: {partner_id}\n")
         
-        if len(partner_id) == 0 and phone not in [False, None]:
-            partner_id = self.get_partner_id([ ('phone', '=', phone), ])
-        _logging.info(f"DEF162 partner_id phone: {partner_id}\n")
-        
-        if len(partner_id) == 0 and email not in [False, None]:
-            partner_id = self.get_partner_id([ ('email', '=', email) ])
-        _logging.info(f"DEF166 partner_id email: {partner_id}\n")
-        
-        
-        try:
-            if partner_id.oruschat_id != oruschat_id:
-                partner_id.write({
-                    'oruschat_id': oruschat_id,
-                })
-        except:
-            pass
+
         
         error = {}
         if len(partner_id) == 1:
@@ -189,6 +181,7 @@ class Oruschat(http.Controller):
                 data[ 'agent_email' ] = partner_id.user_id.partner_id.email
             elif len( partner_id.user_id ) == 0:
                 data[ 'agent_email' ] = False
+                
                 
         elif len(partner_id) == 0:
             status = 404
@@ -207,12 +200,28 @@ class Oruschat(http.Controller):
         _logging.info(f"DEF202 output: {output}\n")
         return http.Response( json.dumps(output), status, headers, )
     
-    def get_partner_id(self, filter1):
-        partner_id = http.request.env['res.partner'].sudo().search(
-            filter1,
-            limit=1
-        )
+     
         
+           
+    
+    
+    
+    def get_partner_id(self, params):
+        partner_id = {}
+        for key in params:
+            partner_id = http.request.env['res.partner'].sudo().search([
+                (key, '=', params[key])
+            ])
+            if(len(partner_id) == 1):
+                break
+        
+        return partner_id
+        
+        
+    
+    def create_partner(self, params):
+
+        partner_id = http.request.env['res.partner'].sudo().create(params)
         return partner_id
         
 #         status = 200
