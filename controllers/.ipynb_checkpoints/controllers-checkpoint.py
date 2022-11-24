@@ -57,7 +57,6 @@ class Oruschat(http.Controller):
         
         user_id = self.get_user_id_by_email(user_email)
         if len(user_id) == 1: lead_data['user_id'] = user_id.id
-
         
         partner_params = {}
         if oruschat_id: partner_params['oruschat_id'] = oruschat_id
@@ -76,8 +75,6 @@ class Oruschat(http.Controller):
             pass
         
         lead_data['partner_id'] = partner_id.id
-        
-        
         
         category_id = self.get_record_by_name( 'crm.tag', category_name )
         if len(category_id) == 1: lead_data['tag_ids'] = category_name_id.id
@@ -144,7 +141,18 @@ class Oruschat(http.Controller):
         oruschat_id = header.get('contact-id')
         company_int = header.get('company-id') or 1
         
+        company = http.request.env['res.company'].sudo().search([
+                ('id', '=', company_int)
+        ])
         
+        if company.oruschat_key != key:
+            data = {
+            'status' : False,
+            'error' : 'INVALID KEY'
+            }
+            return json.dumps( {'data': data} )
+        else:
+            pass
 
         if oruschat_id in [False, None]:
             
