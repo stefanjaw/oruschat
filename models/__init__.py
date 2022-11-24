@@ -2,5 +2,4 @@
 
 from . import models
 from . import res_partner
-#from . import crm_lead
-#from . import res_company
+from . import res_company
