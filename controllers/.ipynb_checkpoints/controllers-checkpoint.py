@@ -126,7 +126,7 @@ class Oruschat(http.Controller):
         
         
         
-    @http.route('/oruschat/contact', auth='public', csrf=False, methods=['GET'], type='json')
+    @http.route('/oruschat/contact', auth='public', csrf=False, methods=['GET'])
     def oruschat_get(self, **kw):
         
         data = http.request.httprequest.data
