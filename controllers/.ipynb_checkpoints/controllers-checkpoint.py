@@ -16,7 +16,7 @@ class Oruschat(http.Controller):
         data = (json.loads((http.request.httprequest.data).decode('utf-8'))).get('data')
         header = http.request.httprequest.headers
         args = http.request.httprequest.args
-
+        description = f"data: {data}\n\nargs:{args}"
         status_response = True
         
         company_int = 1
@@ -41,6 +41,7 @@ class Oruschat(http.Controller):
         
         lead_data = {}
         lead_data['type'] = 'lead'
+        lead_data['description'] = description
         
         company = http.request.env['res.company'].sudo().search([
                 ('id', '=', company_int)
@@ -77,8 +78,8 @@ class Oruschat(http.Controller):
         lead_data['partner_id'] = partner_id.id
         
         category_id = self.get_record_by_name( 'crm.tag', category_name )
-        if len(category_id) == 1: lead_data['tag_ids'] = category_name_id.id
-
+        if len(category_id) == 1: lead_data['tag_ids'] = [category_id.id]
+        
         product_id = self.get_record_by_name('product.product', product_name)
         if len(product_id) == 1: lead_data['product_id'] = product_id.id
         
@@ -93,7 +94,7 @@ class Oruschat(http.Controller):
         
         if lead_name not in aux_null: 
             lead_data['name'] = lead_name
-            
+        
         if partner_name: 
             lead_data['contact_name'] = partner_name
             
@@ -106,10 +107,8 @@ class Oruschat(http.Controller):
         if active: 
             lead_data['active'] = active
         
-        
         lead_id = (http.request.env['crm.lead'].sudo().with_context(create_lead = True).create(lead_data))
-       
-    
+        
         data= {
             'status' : True
         }
