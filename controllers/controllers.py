@@ -26,6 +26,7 @@ class Oruschat(http.Controller):
         lead_name = data.get('lead_name')
         category_name = data.get('category_name')
         product_name = data.get('product_name')
+        product_code = data.get('product_code')
         oruschat_id = data.get('contact_id')
         user_email = data.get('agent_email')
         partner_name = data.get('contact_name')
@@ -70,7 +71,6 @@ class Oruschat(http.Controller):
             partner_id = self.create_partner(partner_params)
             partner_id.write({'user_id': user_id.id})
         elif len(partner_id) > 1:
-
             partner_id = partner_id[0]
         else:
             pass
@@ -80,8 +80,12 @@ class Oruschat(http.Controller):
         category_id = self.get_record_by_name( 'crm.tag', category_name )
         if len(category_id) == 1: lead_data['tag_ids'] = [category_id.id]
         
-        product_id = self.get_record_by_name('product.product', product_name)
+        product_id = self.get_record_by_default_code('product.product', product_code)
         if len(product_id) == 1: lead_data['product_id'] = product_id.id
+        
+        if len(product_id) == 0:
+            product_id = self.get_record_by_name('product.product', product_name)
+            if len(product_id) == 1: lead_data['product_id'] = product_id.id
         
         source_id = self.get_record_by_name('utm.source', source)
         if len(source_id) == 1: lead_data['source_id'] = source_id.id
@@ -95,7 +99,13 @@ class Oruschat(http.Controller):
         if lead_name not in aux_null: 
             lead_data['name'] = lead_name
         
-        if partner_name: 
+        if lead_data.get('name') in aux_null: 
+            lead_data['name'] = partner_name
+            
+        if lead_data.get('name') in aux_null: 
+            lead_data['name'] = partner_phone
+        
+        if partner_name:
             lead_data['contact_name'] = partner_name
             
         if partner_email: 
@@ -252,5 +262,13 @@ class Oruschat(http.Controller):
             record_id = http.request.env[model]
         return record_id
     
+    def get_record_by_default_code( self, model, default_code ):
+        if default_code:
+            record_id = http.request.env[model].sudo().search([
+                ('default_code', 'ilike', default_code )
+            ])
+        else:
+            record_id = http.request.env[model]
+        return record_id
 
     
