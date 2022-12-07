@@ -78,23 +78,23 @@ class Oruschat(http.Controller):
         lead_data['partner_id'] = partner_id.id
         
         category_id = self.get_record_by_name( 'crm.tag', category_name )
-        if len(category_id) == 1: lead_data['tag_ids'] = [category_id.id]
+        if len(category_id) > 0: lead_data['tag_ids'] = [category_id[0].id]
         
         product_id = self.get_record_by_default_code('product.product', product_code)
-        if len(product_id) == 1: lead_data['product_id'] = product_id.id
+        if len(product_id) > 0: lead_data['product_id'] = product_id[0].id
         
         if len(product_id) == 0:
             product_id = self.get_record_by_name('product.product', product_name)
-            if len(product_id) == 1: lead_data['product_id'] = product_id.id
+            if len(product_id) > 0: lead_data['product_id'] = product_id[0].id
         
         source_id = self.get_record_by_name('utm.source', source)
-        if len(source_id) == 1: lead_data['source_id'] = source_id.id
+        if len(source_id) > 0: lead_data['source_id'] = source_id[0].id
         
         medium_id = self.get_record_by_name('utm.medium', medium)
-        if len(medium_id) == 1: lead_data['medium_id'] = medium_id.id
+        if len(medium_id) > 0: lead_data['medium_id'] = medium_id[0].id
         
         campaign_id = self.get_record_by_name('utm.campaign', campaign_name)
-        if len(campaign_id) == 1: lead_data['campaign_id'] = campaign_id.id
+        if len(campaign_id) > 0: lead_data['campaign_id'] = campaign_id[0].id
         
         if lead_name not in aux_null: 
             lead_data['name'] = lead_name
