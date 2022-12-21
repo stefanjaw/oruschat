@@ -7,8 +7,6 @@ import logging
 _logging = _logger = logging.getLogger(__name__)
 
 class Oruschat(http.Controller): 
-
-    
     
     @http.route('/oruschat/lead', auth='public', csrf=False, methods=['POST'], type='json')
     def oruschat_post(self, **kw):
@@ -227,9 +225,28 @@ class Oruschat(http.Controller):
     def get_update_partner_id(self, params):
         partner_id = http.request.env['res.partner']
         for key in params:
-            partner_id = http.request.env['res.partner'].sudo().search([
-                (key, '=', params[key])
-            ])
+            filter1 = [(key, '=', params[key])]
+            
+            if key == "phone":
+                phone = params.get('phone')
+                if phone not in [False, None]:
+                    phone.replace(" ", "").replace("-", "").replace("+", "")
+                
+                if len(phone) == 8:
+                    filter1 = [
+                        (key, '=like', "%" + str(phone[0:4]) + "%"),
+                        (key, '=like', "%" + str(phone[4:8]) ),
+                    ]
+                elif len(phone) == 11:
+                    filter1 = [
+                        (key, '=like', "%" + str(phone[3:7]) + "%"),
+                        (key, '=like', "%" + str(phone[7:11]) ),
+                    ]
+                else:
+                    pass
+            
+            partner_id = http.request.env['res.partner'].sudo().search(filter1)
+            
             if len(partner_id) == 1:
                 break
         
