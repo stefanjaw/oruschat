@@ -7,6 +7,8 @@ import logging
 _logging = _logger = logging.getLogger(__name__)
 
 class Oruschat(http.Controller): 
+
+    
     
     @http.route('/oruschat/lead', auth='public', csrf=False, methods=['POST'], type='json')
     def oruschat_post(self, **kw):
@@ -42,11 +44,11 @@ class Oruschat(http.Controller):
         lead_data['type'] = 'lead'
         lead_data['description'] = description
         
-        company = http.request.env['res.company'].sudo().search([
+        company_id = http.request.env['res.company'].sudo().search([
                 ('id', '=', company_int)
         ])
         
-        if company.oruschat_key != key:
+        if company_id.oruschat_key != key:
             data = {
             'status' : False,
             'error' : 'INVALID KEY'
@@ -132,7 +134,7 @@ class Oruschat(http.Controller):
         
     @http.route('/oruschat/contact', auth='public', csrf=False, methods=['GET'])
     def oruschat_get(self, **kw):
-        
+        _logging.info(f"GET contact")
         data = http.request.httprequest.data
         header = http.request.httprequest.headers
         args = http.request.httprequest.args
@@ -148,11 +150,11 @@ class Oruschat(http.Controller):
         oruschat_id = header.get('contact-id')
         company_int = header.get('company-id') or 1
         
-        company = http.request.env['res.company'].sudo().search([
+        company_id = http.request.env['res.company'].sudo().search([
                 ('id', '=', company_int)
         ])
         
-        if company.oruschat_key != key:
+        if company_id.oruschat_key != key:
             data = {
             'status' : False,
             'error' : 'INVALID KEY'
@@ -163,13 +165,13 @@ class Oruschat(http.Controller):
 
         if oruschat_id in [False, None]:
             
-            data = {'error': 'No Oruschat id sent'}
+            data = {'error': 'contact-id not sent'}
             
             headers = {
                 'content-type' : 'application/json'
             }
-
-            return http.Response( data, status=404, headers=headers,)   
+            
+            return http.Response( json.dumps(data), status=404, headers=headers,)   
         
         params = {}
         if oruschat_id : params['oruschat_id'] = oruschat_id
@@ -179,6 +181,8 @@ class Oruschat(http.Controller):
         
         
         partner_id = self.get_update_partner_id(params)
+        
+        
         
         if len(partner_id) == 1 and oruschat_id:
             partner_id.write({'oruschat_id' : oruschat_id})
@@ -213,7 +217,7 @@ class Oruschat(http.Controller):
         }
         
         output = {'data': data, 'error': error}
-
+        
         return http.Response( json.dumps(output), status, headers, )
     
      
@@ -223,33 +227,48 @@ class Oruschat(http.Controller):
     
     
     def get_update_partner_id(self, params):
+        
         partner_id = http.request.env['res.partner']
         for key in params:
-            filter1 = [(key, '=', params[key])]
             
-            if key == "phone":
-                phone = params.get('phone')
-                if phone not in [False, None]:
-                    phone.replace(" ", "").replace("-", "").replace("+", "")
+            partner_id = http.request.env['res.partner'].sudo().search([
+                (key, '=', params[key])
+            ], limit=1)
+            
+            if len(partner_id) == 0 and key == "phone":
+                phone = params[key]
                 
-                if len(phone) == 8:
-                    filter1 = [
-                        (key, '=like', "%" + str(phone[0:4]) + "%"),
-                        (key, '=like', "%" + str(phone[4:8]) ),
-                    ]
-                elif len(phone) == 11:
-                    filter1 = [
-                        (key, '=like', "%" + str(phone[3:7]) + "%"),
-                        (key, '=like', "%" + str(phone[7:11]) ),
-                    ]
-                else:
-                    pass
-            
-            partner_id = http.request.env['res.partner'].sudo().search(filter1)
+                partner_id =    http.request.env['res.partner'].sudo().search([
+                                    ('phone', '=like', f'%{phone[-4:]}'),
+                                    ('phone', '=like', f'%{phone[-8:-4]}%'),
+                                ], limit=1)
+                if len(partner_id) == 1:
+                    params.pop('phone')
+            if len(partner_id) == 0 and key == "phone":
+                phone = params[key]
+                
+                partner_id =    http.request.env['res.partner'].sudo().search([
+                                    ('mobile', '=like', f'%{phone[-4:]}'),
+                                    ('mobile', '=like', f'%{phone[-8:-4]}%')
+                                ], limit=1)
+                
+                if len(partner_id) == 1:
+                    params.pop('phone')
             
             if len(partner_id) == 1:
+                phone = params.get('phone')
+                
+                rem_phone = False
+                if str(phone[-4:]) in str(partner_id.phone) and str(phone[-8:-4]) in str(partner_id.phone):
+                    rem_phone = True
+                if str(phone[-4:]) in str(partner_id.mobile) and str(phone[-8:-4]) in str(partner_id.mobile):
+                    rem_phone = True
+                if rem_phone == True:
+                    params.pop('phone')
+
+            if len(partner_id) == 1:
                 break
-        
+
         if len(partner_id) == 1:
             partner_id.write(params)
         
