@@ -12,8 +12,11 @@ class Oruschat(http.Controller):
     
     @http.route('/oruschat/lead', auth='public', csrf=False, methods=['POST'], type='json')
     def oruschat_post(self, **kw):
-
+        partner_params = {}
+        
+        _logging.info(f"POST lead")
         data = (json.loads((http.request.httprequest.data).decode('utf-8'))).get('data')
+
         header = http.request.httprequest.headers
         args = http.request.httprequest.args
         description = f"data: {data}\n\nargs:{args}"
@@ -58,24 +61,25 @@ class Oruschat(http.Controller):
             pass
         
         user_id = self.get_user_id_by_email(user_email)
-        if len(user_id) == 1: lead_data['user_id'] = user_id.id
+        if len(user_id) == 1:
+            lead_data['user_id'] = user_id.id
+            partner_params['user_id'] = user_id.id
         
-        partner_params = {}
         if oruschat_id: partner_params['oruschat_id'] = oruschat_id
         if partner_name: partner_params['name'] = partner_name
         if partner_email: partner_params['email'] = partner_email
         if partner_phone: partner_params['phone'] = partner_phone
         
         partner_id = self.get_update_partner_id(partner_params)
+        
         if len(partner_id) == 0:
             partner_id = self.create_partner(partner_params)
-            partner_id.write({'user_id': user_id.id})
         elif len(partner_id) > 1:
             partner_id = partner_id[0]
         else:
             pass
-        
         lead_data['partner_id'] = partner_id.id
+        lead_data['user_id'] = partner_id.user_id.id
         
         category_id = self.get_record_by_name( 'crm.tag', category_name )
         if len(category_id) > 0: lead_data['tag_ids'] = [category_id[0].id]
@@ -117,8 +121,12 @@ class Oruschat(http.Controller):
         if active: 
             lead_data['active'] = active
         
-        lead_id = (http.request.env['crm.lead'].sudo().with_context(salesperson_secuential = True).create(lead_data))
+        is_salesperson_secuential = True
+        if lead_data.get('user_id'):
+            is_salesperson_secuential = False
         
+        lead_id = (http.request.env['crm.lead'].sudo().with_context(salesperson_secuential = is_salesperson_secuential).create(lead_data))
+        _logging.info(f"  Created: {lead_id} for {partner_id}")
         data= {
             'status' : True
         }
@@ -231,6 +239,9 @@ class Oruschat(http.Controller):
         partner_id = http.request.env['res.partner']
         for key in params:
             
+            if key not in ["oruschat_id", "phone"]:
+                continue
+                
             partner_id = http.request.env['res.partner'].sudo().search([
                 (key, '=', params[key])
             ], limit=1)
@@ -242,8 +253,7 @@ class Oruschat(http.Controller):
                                     ('phone', '=like', f'%{phone[-4:]}'),
                                     ('phone', '=like', f'%{phone[-8:-4]}%'),
                                 ], limit=1)
-                if len(partner_id) == 1:
-                    params.pop('phone')
+            
             if len(partner_id) == 0 and key == "phone":
                 phone = params[key]
                 
@@ -251,24 +261,19 @@ class Oruschat(http.Controller):
                                     ('mobile', '=like', f'%{phone[-4:]}'),
                                     ('mobile', '=like', f'%{phone[-8:-4]}%')
                                 ], limit=1)
-                
-                if len(partner_id) == 1:
-                    params.pop('phone')
             
             if len(partner_id) == 1:
-                phone = params.get('phone')
-                
-                rem_phone = False
-                if str(phone[-4:]) in str(partner_id.phone) and str(phone[-8:-4]) in str(partner_id.phone):
-                    rem_phone = True
-                if str(phone[-4:]) in str(partner_id.mobile) and str(phone[-8:-4]) in str(partner_id.mobile):
-                    rem_phone = True
-                if rem_phone == True:
-                    params.pop('phone')
-
-            if len(partner_id) == 1:
                 break
-
+        
+        if len(partner_id) == 1:
+            phone = params.get('phone')
+            rem_phone = False
+            if str(phone[-4:]) in str(partner_id.phone) and str(phone[-8:-4]) in str(partner_id.phone):
+                rem_phone = True
+            if str(phone[-4:]) in str(partner_id.mobile) and str(phone[-8:-4]) in str(partner_id.mobile):
+                rem_phone = True
+            if rem_phone == True:
+                params.pop('phone')
         if len(partner_id) == 1:
             partner_id.write(params)
         
