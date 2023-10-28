@@ -7,8 +7,6 @@ import logging
 _logging = _logger = logging.getLogger(__name__)
 
 class Oruschat(http.Controller): 
-
-    
     
     @http.route('/oruschat/lead', auth='public', csrf=False, methods=['POST'], type='json')
     def oruschat_post(self, **kw):
@@ -16,7 +14,7 @@ class Oruschat(http.Controller):
         
         _logging.info(f"POST lead")
         data = (json.loads((http.request.httprequest.data).decode('utf-8'))).get('data')
-
+        
         header = http.request.httprequest.headers
         args = http.request.httprequest.args
         description = f"data: {data}\n\nargs:{args}"
@@ -27,6 +25,7 @@ class Oruschat(http.Controller):
         key = header.get('key')
         
         lead_name = data.get('lead_name')
+        
         category_name = data.get('category_name')
         product_name = data.get('product_name')
         product_code = data.get('product_code')
@@ -71,8 +70,7 @@ class Oruschat(http.Controller):
         if partner_phone: partner_params['phone'] = partner_phone
         
         partner_id = self.get_update_partner_id(partner_params)
-        
-        if len(partner_id) == 0:
+        if len(partner_id) == 0 and len(partner_params) > 0:
             partner_id = self.create_partner(partner_params)
         elif len(partner_id) > 1:
             partner_id = partner_id[0]
@@ -125,20 +123,26 @@ class Oruschat(http.Controller):
         if lead_data.get('user_id'):
             is_salesperson_secuential = False
         
-        lead_id = (http.request.env['crm.lead'].sudo().with_context(salesperson_secuential = is_salesperson_secuential).create(lead_data))
-        _logging.info(f"  Created: {lead_id} for {partner_id}")
+        lead_id = self.lead_existing(lead_data)
+        
+        if len(lead_id) > 0:
+            _logger.info(f"      Updating CRM: {lead_id}")
+            is_salesperson_secuential = False
+            
+            lead_id.with_context(
+                salesperson_secuential = is_salesperson_secuential).write(lead_data)
+        else:
+            lead_id = (http.request.env['crm.lead'].sudo().with_context(
+                salesperson_secuential = is_salesperson_secuential).create(lead_data)
+            )
+            _logging.info(f"  Created: {lead_id} for {partner_id}")
+        
         data= {
             'status' : True
         }
         
         return data
 
-
- 
-        
-   
-        
-        
         
     @http.route('/oruschat/contact', auth='public', csrf=False, methods=['GET'])
     def oruschat_get(self, **kw):
@@ -313,3 +317,15 @@ class Oruschat(http.Controller):
         return record_id
 
     
+    def lead_existing(self, lead_data):
+        lead_ids = http.request.env['crm.lead'].sudo().search([
+                        ('name',       '=', lead_data.get('name')  ),
+                        ('email_from', '=', lead_data.get('email_from') ),
+                        ('partner_id', '=', lead_data.get('partner_id') ),
+                        ('medium_id', '=', lead_data.get('medium_id') ),
+                        ('source_id', '=', lead_data.get('source_id') ),
+                        ('user_id', '=', lead_data.get('user_id') ),
+                    ],
+                        limit=1
+                    )
+        return lead_ids
